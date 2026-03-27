@@ -81,6 +81,35 @@ def check_s2_weights_exist() -> bool:
     return has_required and has_weights
 
 
+def _patch_s2_repo():
+    """Apply compatibility patches to the cloned S2 repo.
+
+    Fixes upstream bug in reference_loader.py where
+    `import torchaudio.io._load_audio_fileobj` inside __init__ creates a local
+    binding for `torchaudio`, causing UnboundLocalError on torchaudio 2.9+
+    (which removed list_audio_backends()).
+    """
+    ref_loader = os.path.join(
+        S2_REPO_DIR, "fish_speech", "inference_engine", "reference_loader.py"
+    )
+    if not os.path.isfile(ref_loader):
+        return
+    try:
+        with open(ref_loader, "r", encoding="utf-8") as f:
+            content = f.read()
+        # Only patch if the buggy pattern is present
+        if "import torchaudio.io._load_audio_fileobj" in content:
+            content = content.replace(
+                "import torchaudio.io._load_audio_fileobj  # noqa: F401",
+                "import importlib; importlib.import_module('torchaudio.io._load_audio_fileobj')  # noqa: F401",
+            )
+            with open(ref_loader, "w", encoding="utf-8") as f:
+                f.write(content)
+            print("🔧 Patched reference_loader.py (torchaudio 2.9+ compat)")
+    except Exception as e:
+        print(f"⚠️ Could not patch reference_loader.py: {e}")
+
+
 def clone_s2_repo() -> Tuple[bool, str]:
     """Clone or update the latest fish-speech repo for S2 Pro support."""
     try:
@@ -91,6 +120,7 @@ def clone_s2_repo() -> Tuple[bool, str]:
                 capture_output=True, text=True, timeout=120
             )
             if result.returncode == 0:
+                _patch_s2_repo()
                 print("✅ Fish Speech S2 repo updated")
                 return True, "✅ Fish Speech S2 repo updated"
             else:
@@ -103,6 +133,7 @@ def clone_s2_repo() -> Tuple[bool, str]:
                 capture_output=True, text=True, timeout=300
             )
             if result.returncode == 0:
+                _patch_s2_repo()
                 print("✅ Fish Speech S2 repo cloned successfully")
                 return True, "✅ Fish Speech S2 repo cloned successfully"
             else:
