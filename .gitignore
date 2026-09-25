@@ -36,6 +36,7 @@ outputs/
 models/
 checkpoints/
 cache/
+.cache/
 F5-Models/
 indextts/checkpoints/
 custom_voices/

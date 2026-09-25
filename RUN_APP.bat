@@ -6,8 +6,18 @@ echo          APP LAUNCHER
 echo ========================================
 echo.
 
-REM Set local environment path
+REM Set local environment path and redirect all caches/temp to Drive D
 set LOCAL_ENV_PATH=%cd%\tts_env
+set CACHE_ROOT=%cd%\.cache
+set UV_CACHE_DIR=%CACHE_ROOT%\uv
+set UV_PYTHON_INSTALL_DIR=%CACHE_ROOT%\python
+set PIP_CACHE_DIR=%CACHE_ROOT%\pip
+set HF_HOME=%CACHE_ROOT%\hf
+set HUGGINGFACE_HUB_CACHE=%CACHE_ROOT%\hf\hub
+set TORCH_HOME=%CACHE_ROOT%\torch
+set MODELSCOPE_CACHE=%CACHE_ROOT%\modelscope
+set TEMP=%CACHE_ROOT%\temp
+set TMP=%CACHE_ROOT%\temp
 
 REM Check if local environment exists
 if not exist "%LOCAL_ENV_PATH%" (
@@ -15,6 +25,15 @@ if not exist "%LOCAL_ENV_PATH%" (
     echo Please run RUN_INSTALLER.bat first!
     pause
     exit /b 1
+)
+
+REM Check if local environment is a standard Python/uv venv with Scripts\activate.bat
+if exist "%LOCAL_ENV_PATH%\Scripts\activate.bat" (
+    echo [INFO] Found Python virtual environment at: %LOCAL_ENV_PATH%
+    echo [INFO] Launching Ultimate TTS Studio...
+    echo.
+    start "Ultimate TTS Studio" /D "%cd%" "%windir%\System32\cmd.exe" /K ""%LOCAL_ENV_PATH%\Scripts\activate.bat" && python launch.py"
+    goto after_launch
 )
 
 REM Try to find Anaconda/Miniconda installation
@@ -79,6 +98,8 @@ echo del "%%~f0" >> temp_launch.bat
 
 REM Launch in conda prompt
 start "Ultimate TTS Studio" /D "%cd%" "%windir%\System32\cmd.exe" /K ""%CONDA_ROOT%\Scripts\activate.bat" "%CONDA_ROOT%" && temp_launch.bat"
+
+:after_launch
 
 REM Wait a moment for the window to launch
 timeout /t 2 /nobreak >nul

@@ -13,6 +13,21 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+# Redirect all caches & model downloads to local .cache folder on Drive D (avoid filling Drive C)
+_BASE_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
+os.makedirs(os.path.join(_BASE_CACHE_DIR, "hf"), exist_ok=True)
+os.makedirs(os.path.join(_BASE_CACHE_DIR, "torch"), exist_ok=True)
+os.makedirs(os.path.join(_BASE_CACHE_DIR, "modelscope"), exist_ok=True)
+os.makedirs(os.path.join(_BASE_CACHE_DIR, "temp"), exist_ok=True)
+os.environ.setdefault("HF_HOME", os.path.join(_BASE_CACHE_DIR, "hf"))
+os.environ.setdefault("HUGGINGFACE_HUB_CACHE", os.path.join(_BASE_CACHE_DIR, "hf", "hub"))
+os.environ.setdefault("TORCH_HOME", os.path.join(_BASE_CACHE_DIR, "torch"))
+os.environ.setdefault("MODELSCOPE_CACHE", os.path.join(_BASE_CACHE_DIR, "modelscope"))
+os.environ.setdefault("UV_CACHE_DIR", os.path.join(_BASE_CACHE_DIR, "uv"))
+os.environ.setdefault("PIP_CACHE_DIR", os.path.join(_BASE_CACHE_DIR, "pip"))
+os.environ["TEMP"] = os.path.join(_BASE_CACHE_DIR, "temp")
+os.environ["TMP"] = os.path.join(_BASE_CACHE_DIR, "temp")
+
 # Suppress redirect warning on Windows/MacOS
 warnings.filterwarnings("ignore", message="Redirects are currently not supported")
 os.environ["TORCH_DISTRIBUTED_DEBUG"] = "OFF"
@@ -131,19 +146,8 @@ except ImportError:
     KOKORO_AVAILABLE = False
     print("⚠️ Kokoro TTS not available. Some features will be disabled.")
 
-# Fish Speech imports
-try:
-    with suppress_specific_warnings():
-        import queue
-        from fish_speech.inference_engine import TTSInferenceEngine
-        from fish_speech.models.dac.inference import load_model as load_decoder_model
-        from fish_speech.models.text2semantic.inference import launch_thread_safe_queue
-        from fish_speech.utils.schema import ServeTTSRequest, ServeReferenceAudio
-        from fish_speech.utils.file import audio_to_bytes
-    FISH_SPEECH_AVAILABLE = True
-except ImportError:
-    FISH_SPEECH_AVAILABLE = False
-    print("⚠️ Fish Speech S1 not available. Some features will be disabled.")
+# Disabled Fish Speech S1 & S2 Pro
+FISH_SPEECH_AVAILABLE = False
 
 # F5-TTS imports
 try:
@@ -155,67 +159,12 @@ except ImportError:
     F5_TTS_AVAILABLE = False
     print("⚠️ F5-TTS not available. Some features will be disabled.")
 
-# Higgs Audio imports
-try:
-    with suppress_specific_warnings():
-        from higgs_audio_handler import generate_higgs_audio_tts, get_higgs_audio_handler
-    HIGGS_AUDIO_AVAILABLE = True
-    print("✅ Higgs Audio handler loaded")
-except ImportError:
-    HIGGS_AUDIO_AVAILABLE = False
-    print("⚠️ Higgs Audio not available. Some features will be disabled.")
-
-# KittenTTS imports
-try:
-    with suppress_specific_warnings():
-        from kitten_tts_handler import generate_kitten_tts, get_kitten_tts_handler, init_kitten_tts, unload_kitten_tts, KITTEN_VOICES
-    KITTEN_TTS_AVAILABLE = True
-    print("✅ KittenTTS handler loaded")
-except ImportError:
-    KITTEN_TTS_AVAILABLE = False
-    print("⚠️ KittenTTS not available. Some features will be disabled.")
-
-# VibeVoice imports
-try:
-    with suppress_specific_warnings():
-        from vibevoice_handler import (
-            get_vibevoice_handler, generate_vibevoice_podcast, init_vibevoice, 
-            unload_vibevoice, get_vibevoice_status, get_vibevoice_voices, scan_vibevoice_models,
-            download_vibevoice_model
-        )
-    VIBEVOICE_AVAILABLE = True
-    print("✅ VibeVoice handler loaded")
-except ImportError:
-    VIBEVOICE_AVAILABLE = False
-    print("⚠️ VibeVoice not available. Some features will be disabled.")
-
-# VoxCPM imports
-try:
-    with suppress_specific_warnings():
-        from voxcpm_handler import (
-            get_voxcpm_handler, generate_voxcpm_tts, init_voxcpm, 
-            unload_voxcpm, get_voxcpm_status, transcribe_voxcpm_audio
-        )
-    VOXCPM_AVAILABLE = True
-    print("✅ VoxCPM handler loaded")
-except ImportError:
-    VOXCPM_AVAILABLE = False
-    print("⚠️ VoxCPM not available. Some features will be disabled.")
-
-# Fish Speech S2 Pro imports
-try:
-    with suppress_specific_warnings():
-        from fish_speech_s2_handler import (
-            get_fish_s2_handler, generate_fish_s2_tts, init_fish_speech_s2,
-            unload_fish_speech_s2, get_s2_status, setup_s2_pro,
-            check_s2_repo_exists, check_s2_weights_exist,
-            FISH_S2_AVAILABLE as _FISH_S2_AVAILABLE
-        )
-    FISH_S2_AVAILABLE = True  # Handler is available even if model isn't loaded yet
-    print("✅ Fish Speech S2 Pro handler loaded")
-except ImportError:
-    FISH_S2_AVAILABLE = False
-    print("⚠️ Fish Speech S2 Pro not available. Some features will be disabled.")
+# Disabled unused heavy/redundant engines (Higgs Audio, KittenTTS, VibeVoice, VoxCPM, Fish Speech S2)
+HIGGS_AUDIO_AVAILABLE = False
+KITTEN_TTS_AVAILABLE = False
+VIBEVOICE_AVAILABLE = False
+VOXCPM_AVAILABLE = False
+FISH_S2_AVAILABLE = False
 
 # Chatterbox Turbo imports
 try:
@@ -460,19 +409,8 @@ def unload_qwen_tts_model(model_type: str = None, model_size: str = None):
     except Exception as e:
         return f"⚠️ Error unloading Qwen TTS: {str(e)}"
 
-# eBook Converter imports
-try:
-    with suppress_specific_warnings():
-        from ebook_converter import (
-            EBookConverter, 
-            get_supported_formats, 
-            analyze_ebook, 
-            convert_ebook_to_text_chunks
-        )
-    EBOOK_CONVERTER_AVAILABLE = True
-except ImportError:
-    EBOOK_CONVERTER_AVAILABLE = False
-    print("⚠️ eBook converter not available. Some features will be disabled.")
+# Disabled eBook converter
+EBOOK_CONVERTER_AVAILABLE = False
 
 # Audio processing imports
 try:
@@ -496,107 +434,19 @@ except ImportError:
     AUDIO_PROCESSING_AVAILABLE = False
     print("⚠️ Advanced audio processing libraries not available. Some features will be disabled.")
 
-# IndexTTS Model Management Functions
 def check_indextts_models():
-    """Check if IndexTTS models are available"""
-    model_dir = Path("indextts/checkpoints")
-    required_files = ["config.yaml", "gpt.pth", "bigvgan_generator.pth", "bpe.model"]
-    
-    if not model_dir.exists():
-        return False
-    
-    for filename in required_files:
-        if not (model_dir / filename).exists():
-            return False
-    
-    return True
+    return False
 
 def download_indextts_models_auto():
-    """Automatically download IndexTTS models if missing"""
-    try:
-        from huggingface_hub import hf_hub_download
-        import requests
-    except ImportError:
-        print("⚠️  Cannot auto-download IndexTTS models - missing huggingface_hub")
-        print("   Install with: pip install huggingface_hub requests")
-        return False
-    
-    repo_id = "IndexTeam/IndexTTS-1.5"
-    model_dir = Path("indextts/checkpoints")
-    
-    # Create directory if it doesn't exist
-    model_dir.mkdir(parents=True, exist_ok=True)
-    
-    required_files = ["config.yaml", "gpt.pth", "bigvgan_generator.pth", "bpe.model"]
-    
-    print("🎯 Auto-downloading IndexTTS models...")
-    print("   This may take a few minutes on first run...")
-    
-    for filename in required_files:
-        file_path = model_dir / filename
-        
-        if file_path.exists():
-            continue
-            
-        try:
-            print(f"   ⬇️  Downloading {filename}...")
-            
-            hf_hub_download(
-                repo_id=repo_id,
-                filename=filename,
-                local_dir=str(model_dir),
-                local_dir_use_symlinks=False
-            )
-            
-            print(f"   ✅ {filename} downloaded")
-            
-        except Exception as e:
-            print(f"   ❌ Failed to download {filename}: {e}")
-            return False
-    
-    print("🎉 IndexTTS models ready!")
-    return True
+    return False
 
-# Import IndexTTS
+# Disabled IndexTTS v1 (replaced by IndexTTS2)
 INDEXTTS_AVAILABLE = False
 INDEXTTS_MODELS_AVAILABLE = False
 
-try:
-    with suppress_specific_warnings():
-        from indextts.indextts.infer import IndexTTS
-    INDEXTTS_AVAILABLE = True
-    
-    # Check if models are available
-    with suppress_specific_warnings():
-        if check_indextts_models():
-            INDEXTTS_MODELS_AVAILABLE = True
-            print("✅ IndexTTS loaded with models ready")
-        else:
-            print("🎯 IndexTTS available but models missing - attempting auto-download...")
-            if download_indextts_models_auto():
-                INDEXTTS_MODELS_AVAILABLE = True
-                print("✅ IndexTTS models downloaded and ready")
-            else:
-                print("⚠️  IndexTTS available but models not downloaded")
-                print("   Run: python tools/download_indextts_models.py")
-            
-except ImportError:
-    INDEXTTS_AVAILABLE = False
-    print("⚠️  IndexTTS not available - indextts package not found")
-
-# IndexTTS2 imports
-try:
-    with suppress_specific_warnings():
-        from indextts2_handler import (
-            get_indextts2_handler, generate_indextts2_tts, init_indextts2, 
-            unload_indextts2, get_indextts2_status, check_indextts2_models,
-            download_indextts2_models, EMOTION_PRESETS
-        )
-    INDEXTTS2_AVAILABLE = True
-    print("✅ IndexTTS2 handler loaded")
-except ImportError:
-    INDEXTTS2_AVAILABLE = False
-    print("⚠️ IndexTTS2 not available. Some features will be disabled.")
+# Disabled IndexTTS2
+INDEXTTS2_AVAILABLE = False
+EMOTION_PRESETS = {}
 
 # ===== CONVERSATION MODE FUNCTIONS =====
 def detect_language(text: str, default="en") -> str:
@@ -6088,19 +5938,45 @@ def create_gradio_interface():
         
         /* Status Output */
         .gr-textbox[readonly] {
-            background: rgba(0, 255, 0, 0.05) !important;
-            border-color: rgba(0, 255, 0, 0.2) !important;
-            color: rgba(0, 255, 0, 0.9) !important;
+            background: rgba(102, 126, 234, 0.06) !important;
+            border-color: rgba(102, 126, 234, 0.25) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* 2-Column Pill Grid for TTS Engine Selector */
+        .engine-selector-grid .wrap {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+        }
+        .engine-selector-grid label {
+            margin: 0 !important;
+            padding: 10px 12px !important;
+            border-radius: 10px !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(255, 255, 255, 0.03) !important;
+            transition: all 0.15s ease !important;
+            font-size: 0.92em !important;
+        }
+        .engine-selector-grid label:hover {
+            border-color: rgba(102, 126, 234, 0.5) !important;
+            background: rgba(102, 126, 234, 0.1) !important;
+        }
+        .engine-selector-grid label.selected {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.28), rgba(118, 75, 162, 0.28)) !important;
+            border-color: #667eea !important;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.25) !important;
+            font-weight: 600 !important;
         }
         
         /* Scrollbar Styling */
         ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
         }
         
         ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
             border-radius: 5px;
         }
         
@@ -6109,92 +5985,18 @@ def create_gradio_interface():
             border-radius: 5px;
         }
         
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #764ba2, #667eea);
-        }
-        
-        /* Loading Animation */
-        .gr-loading {
-            color: #667eea !important;
-        }
-        
-        /* Feature Cards - Compact */
-        .feature-card {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            border-radius: 12px;
-            padding: 12px;
-            margin: 5px;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        }
-        
-        /* Glow Effects */
-        .glow {
-            box-shadow: 
-                0 0 20px rgba(102, 126, 234, 0.5),
-                0 0 40px rgba(102, 126, 234, 0.3),
-                0 0 60px rgba(102, 126, 234, 0.1);
-        }
-        
-        /* Responsive Design - Compact */
-        @media (max-width: 768px) {
-            .main-title {
-                font-size: 2.2em;
-            }
-            
-            .subtitle {
-                font-size: 0.9em;
-                margin-bottom: 15px;
-            }
-            
-            .generate-btn {
-                width: 100% !important;
-                padding: 12px 25px !important;
-                font-size: 1.0em !important;
-            }
-            
-            .card, .settings-card, .gr-group {
-                padding: 12px !important;
-                margin: 5px 0 !important;
-            }
-            
-            .feature-card {
-                padding: 8px;
-                margin: 3px;
-            }
-        }
-        
-        /* Additional light mode fixes removed */
-        
         /* Dark Theme Overrides */
         .dark {
             --tw-bg-opacity: 0 !important;
         }
         
-        /* Custom Animations */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
         
         .fade-in {
-            animation: fadeIn 0.5s ease-out;
+            animation: fadeIn 0.25s ease-out;
         }
         """
         + """
@@ -6322,73 +6124,31 @@ def create_gradio_interface():
         """
     ) as demo:
         
-        # Header with enhanced styling
+        # Compact Modern Top Bar
         gr.Markdown("""
-        <div class="fade-in">
-            <div class="main-title">
-            ✨ ULTIMATE TTS STUDIO PRO ✨
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 18px; margin-bottom:10px; border-radius:12px; background:linear-gradient(135deg, rgba(102,126,234,0.16), rgba(118,75,162,0.16)); border:1px solid rgba(102,126,234,0.28);">
+            <div style="font-size:1.25em; font-weight:700; letter-spacing:0.3px;">
+                🎙️ TTS Studio <span style="font-weight:400; font-size:0.8em; opacity:0.85; margin-left:8px;">F5-TTS · Chatterbox · Kokoro · Qwen3</span>
             </div>
-            <div class="subtitle">
-            🎭 ChatterboxTTS + Kokoro TTS + Fish Speech S1 + IndexTTS + F5-TTS + VoxCPM | SUP3R EDITION 🚀<br/>
-            <strong>Advanced Text-to-Speech with Multiple Engines, Voice Presets, Audio Effects & Export Options</strong>
-            </div>
-        </div>
-        
-        <div style="display: flex; justify-content: center; margin: 20px 0 15px 0;">
-            <a href="https://github.com/SUP3RMASS1VE/Ultimate-TTS-Studio-SUP3R-Edition" target="_blank" style="text-decoration: none;">
-                <button style="
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border: none;
-                    border-radius: 25px;
-                    padding: 12px 24px;
-                    color: white;
-                    font-weight: 600;
-                    font-size: 16px;
-                    cursor: pointer;
-                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';" onmouseout="this.style.transform='translateY(0px)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)';">
-                    ⭐ Star this project on GitHub
-                </button>
-            </a>
-        </div>
-        
-        <div style="display: flex; justify-content: center; gap: 10px; margin: 15px 0;">
-            <div class="feature-card" style="flex: 1;">
-                <h3 style="margin: 0 0 5px 0; padding: 0; font-size: 0.9em;">🎤 Voice Cloning</h3>
-                <p style="margin: 0; opacity: 0.8; font-size: 0.8em;">Clone any voice with ChatterboxTTS</p>
-            </div>
-            <div class="feature-card" style="flex: 1;">
-                <h3 style="margin: 0 0 5px 0; padding: 0; font-size: 0.9em;">🗣️ Pre-trained Voices</h3>
-                <p style="margin: 0; opacity: 0.8; font-size: 0.8em;">30+ high-quality Kokoro voices</p>
-            </div>
-            <div class="feature-card" style="flex: 1;">
-                <h3 style="margin: 0 0 5px 0; padding: 0; font-size: 0.9em;">📚 eBook Conversion</h3>
-                <p style="margin: 0; opacity: 0.8; font-size: 0.8em;">Convert books to audiobooks</p>
-            </div>
-            <div class="feature-card" style="flex: 1;">
-                <h3 style="margin: 0 0 5px 0; padding: 0; font-size: 0.9em;">🎵 Audio Effects</h3>
-                <p style="margin: 0; opacity: 0.8; font-size: 0.8em;">Professional audio enhancement</p>
+            <div style="font-size:0.85em; opacity:0.8;">
+                ⚡ Cache & Temp: <code>D:\\Dev\\TTS\\.cache</code>
             </div>
         </div>
         """)
         
-        # Model Management Section - Compact Version
-        with gr.Accordion("🎛️ Model Management", open=True, elem_classes=["fade-in"]):
-            gr.Markdown("*Load only the models you need to save memory.*", elem_classes=["fade-in"])
+        # Model Management Section - Compact & Closed by default so Text Input is immediately visible
+        with gr.Accordion("🎛️ Quản lý Model & VRAM (Bấm để Nạp / Giải phóng bộ nhớ GPU)", open=False, elem_classes=["fade-in"]):
+            gr.Markdown("*💡 Mẹo: Chỉ nạp (Load) bộ đọc bạn đang dùng và bấm Unload khi đổi sang bộ khác để tiết kiệm VRAM.*", elem_classes=["fade-in"])
             
             # Compact model status display
             model_status_display = gr.Markdown(
                 value=get_model_status(),
                 elem_classes=["fade-in"],
-                visible=False  # Hide the detailed status by default
+                visible=False
             )
             
-            # F5-TTS Management in collapsible accordion
-            with gr.Accordion("🎵 F5-TTS Model Management", open=False, elem_classes=["fade-in"]):
+            # F5-TTS Management in collapsible accordion (open by default inside Model Management)
+            with gr.Accordion("🎵 F5-TTS Model Management", open=True, elem_classes=["fade-in"]):
                 if F5_TTS_AVAILABLE:
                     f5_model_status = gr.Markdown(
                         value="Loading model status...",
@@ -6621,7 +6381,7 @@ def create_gradio_interface():
                         )
                 
                 # Fish Speech Management - Compact
-                with gr.Column():
+                with gr.Column(visible=False):
                     with gr.Row():
                         gr.Markdown("🐟 **Fish Speech S1**", elem_classes=["fade-in"])
                         fish_status = gr.Markdown(
@@ -6647,7 +6407,7 @@ def create_gradio_interface():
                         )
                 
                 # Fish Speech S2 Pro Management - Compact
-                with gr.Column():
+                with gr.Column(visible=False):
                     with gr.Row():
                         gr.Markdown("🐟 **Fish Speech S2 Pro**", elem_classes=["fade-in"])
                         fish_s2_status = gr.Markdown(
@@ -6681,7 +6441,7 @@ def create_gradio_interface():
                         )
                 
                 # IndexTTS Management - Compact
-                with gr.Column():
+                with gr.Column(visible=False):
                     with gr.Row():
                         gr.Markdown("🎯 **IndexTTS**", elem_classes=["fade-in"])
                         indextts_status = gr.Markdown(
@@ -6707,7 +6467,7 @@ def create_gradio_interface():
                         )
                 
                 # IndexTTS2 Management - Compact
-                with gr.Column():
+                with gr.Column(visible=False):
                     with gr.Row():
                         gr.Markdown("🎯 **IndexTTS2**", elem_classes=["fade-in"])
                         indextts2_status = gr.Markdown(
@@ -6735,7 +6495,7 @@ def create_gradio_interface():
 
             
             # Second row for Higgs Audio and KittenTTS
-            with gr.Row():
+            with gr.Row(visible=False):
                 # Higgs Audio Management - Compact
                 with gr.Column():
                     with gr.Row():
@@ -6842,10 +6602,10 @@ def create_gradio_interface():
                     with gr.TabItem("📝 TEXT TO SYNTHESIZE", id="single_voice"):
                         # Text input with enhanced styling
                         text = gr.Textbox(
-                            value="Hello! This is a demonstration of the ultimate TTS studio. You can choose between Chatterbox TTS. Fish Speech S1, VoxCPM, Index TTS and Index TTS 2, Higgs audio TTS and F5 TTS for custom voice cloning or Kitten TTS and Kokoro TTS for high-quality pre-trained voices and VibeVoice for podcast.",
-                            label="📝 Text to synthesize",
+                            value="Xin chào! Hãy nhập nội dung văn bản cần đọc vào đây, chọn bộ đọc bên dưới và bấm Generate Speech.",
+                            label="📝 Nội dung Văn bản cần đọc (Text to synthesize)",
                             lines=5,
-                            placeholder="Enter your text here...",
+                            placeholder="Nhập văn bản tiếng Việt hoặc tiếng Anh cần chuyển thành giọng nói...",
                             elem_classes=["fade-in"]
                         )
                     
@@ -7375,7 +7135,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                             """)
                     
                     # eBook to Audiobook Tab
-                    with gr.TabItem("📚 EBOOK TO AUDIOBOOK", id="ebook_mode"):
+                    with gr.TabItem("📚 EBOOK TO AUDIOBOOK", id="ebook_mode", visible=False):
                         if EBOOK_CONVERTER_AVAILABLE:
                             gr.Markdown("""
                             <div style='background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); 
@@ -7540,7 +7300,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                             ebook_chapter_gap = gr.Slider(visible=False, value=2.0)
 
                     # VibeVoice Tab
-                    with gr.TabItem("🎙️ VIBEVOICE", id="vibevoice_mode"):
+                    with gr.TabItem("🎙️ VIBEVOICE", id="vibevoice_mode", visible=False):
                         if VIBEVOICE_AVAILABLE:
                             gr.Markdown("""
                             <div style='background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); 
@@ -7798,88 +7558,79 @@ Alice: I went to Japan. It was absolutely incredible!""",
                             vibevoice_status = gr.Textbox(visible=False)
 
                 
-                # TTS Engine Selection with custom styling
+                # TTS Engine Selection with custom 2-column grid styling
                 tts_engine = gr.Radio(
                     choices=[
-                        ("🎤 ChatterboxTTS - Voice Cloning", "ChatterboxTTS"),
-                        ("🌍 Chatterbox Multilingual - 23 Languages", "Chatterbox Multilingual"),
-                        ("🚀 Chatterbox Turbo - Fast Voice Cloning", "Chatterbox Turbo"),
-                        ("🗣️ Kokoro TTS - Pre-trained Voices", "Kokoro TTS"),
-                        ("🐟 Fish Speech S1 - Natural TTS", "Fish Speech S1"),
-                        ("🐟 Fish Speech S2 Pro - 4B Flagship TTS", "Fish Speech S2 Pro"),
-                        ("🎯 IndexTTS - Industrial Quality", "IndexTTS"),
-                        ("🎯 IndexTTS2 - Advanced Emotion Control", "IndexTTS2"),
-                        ("🎵 F5-TTS - Flow Matching TTS", "F5-TTS"),
-                        ("🎙️ Higgs Audio - Advanced Multimodal TTS", "Higgs Audio"),
-                        ("🎤 VoxCPM - Voice Cloning TTS", "VoxCPM"),
-                        ("🐱 KittenTTS - Mini Model TTS", "KittenTTS"),
-                        ("🎨 Qwen Voice Design - Create Voices", "Qwen Voice Design"),
-                        ("🎭 Qwen Voice Clone - Clone Voices", "Qwen Voice Clone"),
-                        ("🗣️ Qwen Custom Voice - Predefined Speakers", "Qwen Custom Voice")
+                        ("🎵 F5-TTS (Clone giọng & Tiếng Việt)", "F5-TTS"),
+                        ("🚀 Chatterbox Turbo (Clone nhanh + Cảm xúc)", "Chatterbox Turbo"),
+                        ("🎤 ChatterboxTTS (Clone giọng chuẩn)", "ChatterboxTTS"),
+                        ("🌍 Chatterbox Multilingual (23 ngôn ngữ)", "Chatterbox Multilingual"),
+                        ("🗣️ Kokoro TTS (Giọng có sẵn siêu nhẹ)", "Kokoro TTS"),
+                        ("🎨 Qwen Voice Design (Tạo giọng từ mô tả chữ)", "Qwen Voice Design"),
+                        ("🎭 Qwen Voice Clone (Clone giọng 3s)", "Qwen Voice Clone"),
+                        ("🗣️ Qwen Custom Voice (Giọng dựng sẵn)", "Qwen Custom Voice")
                     ],
-                    value="ChatterboxTTS" if CHATTERBOX_AVAILABLE else "Chatterbox Turbo" if CHATTERBOX_TURBO_AVAILABLE else "Kokoro TTS" if KOKORO_AVAILABLE else "Fish Speech S1" if FISH_SPEECH_AVAILABLE else "IndexTTS" if INDEXTTS_AVAILABLE else "F5-TTS" if F5_TTS_AVAILABLE else "Higgs Audio" if HIGGS_AUDIO_AVAILABLE else "VoxCPM" if VOXCPM_AVAILABLE else "KittenTTS" if KITTEN_TTS_AVAILABLE else "Qwen Voice Clone",
-                    label="🎯 Select TTS Engine",
-                    info="Choose your preferred text-to-speech engine (auto-selects when you load a model)",
-                    elem_classes=["fade-in"]
+                    value="F5-TTS" if F5_TTS_AVAILABLE else "Chatterbox Turbo" if CHATTERBOX_TURBO_AVAILABLE else "ChatterboxTTS" if CHATTERBOX_AVAILABLE else "Kokoro TTS" if KOKORO_AVAILABLE else "Qwen Voice Clone",
+                    label="🎯 Chọn Bộ Đọc (Bấm chọn để tự động mở Tab cài đặt tương ứng bên dưới)",
+                    elem_classes=["fade-in", "engine-selector-grid"]
                 )
                 
                 # Audio Format Selection
                 audio_format = gr.Radio(
                     choices=[
-                        ("🎵 WAV - Uncompressed (High Quality)", "wav"),
-                        ("🎶 MP3 - Compressed (Smaller Size)", "mp3")
+                        ("🎵 WAV (Chất lượng gốc)", "wav"),
+                        ("🎶 MP3 (Dung lượng nhẹ)", "mp3")
                     ],
                     value="wav",
-                    label="🎵 Audio Output Format",
-                    info="Choose output format: WAV for best quality, MP3 for smaller file size",
-                    elem_classes=["fade-in"]
+                    label="🎵 Định dạng xuất file",
+                    elem_classes=["fade-in", "engine-selector-grid"]
                 )
             
             with gr.Column(scale=2):
-                # Audio output section with glow effect
+                # Audio output section
                 audio_output = gr.Audio(
-                    label="🎵 Generated Audio",
+                    label="🎵 Kết quả Âm thanh (Generated Audio)",
                     show_download_button=True,
-                    elem_classes=["fade-in", "glow"]
+                    elem_classes=["fade-in"]
                 )
                 
                 # Status with custom styling
                 status_output = gr.Textbox(
                     label="📊 Status",
-                    lines=2,
+                    lines=3,
                     interactive=False,
                     elem_classes=["fade-in"]
                 )
                 
-                # Conversation info output (visible for conversation mode)
+                # Conversation info output (hidden in single voice mode)
                 conversation_info = gr.Textbox(
                     label="📊 Conversation Summary",
-                    lines=8,
+                    lines=6,
                     interactive=False,
                     elem_classes=["fade-in"],
-                    visible=True,
+                    visible=False,
                     value="Ready for conversation generation..."
                 )
                 
-                # Audiobook output and status (for eBook conversion)
+                # Audiobook output and status (hidden since eBook converter is disabled)
                 audiobook_output = gr.Audio(
                     label="🎧 Generated Audiobook",
                     show_download_button=True,
-                    elem_classes=["fade-in", "glow"]
+                    visible=False,
+                    elem_classes=["fade-in"]
                 )
                 
-                # Download link for large audiobook files
                 audiobook_download = gr.File(
                     label="📥 Download Large Audiobook",
                     visible=False,
                     elem_classes=["fade-in"]
                 )
                 
-                # eBook conversion status
                 ebook_status = gr.Textbox(
                     label="📊 eBook Conversion Status",
-                    lines=6,
+                    lines=4,
                     interactive=False,
+                    visible=False,
                     elem_classes=["fade-in"]
                 )
         
@@ -7887,7 +7638,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
         with gr.Row():
             with gr.Column():
                 generate_btn = gr.Button(
-                    "🚀 Generate Speech",
+                    "🚀 Generate Speech (Tạo Giọng Nói)",
                     variant="primary",
                     size="lg",
                     elem_classes=["generate-btn", "fade-in"],
@@ -7895,7 +7646,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                 )
             with gr.Column():
                 generate_conversation_btn = gr.Button(
-                    "🎭 Generate Conversation",
+                    "🎭 Generate Conversation (Tạo Hội Thoại)",
                     variant="primary",
                     size="lg",
                     elem_classes=["generate-btn", "fade-in"],
@@ -7903,9 +7654,9 @@ Alice: I went to Japan. It was absolutely incredible!""",
                 )
         
         # Engine-specific settings in tabs
-        gr.Markdown("## 🎛️ TTS Engine Settings", elem_classes=["fade-in"])
+        gr.Markdown("## 🎛️ Cài đặt Giọng Mẫu & Thông số Engine", elem_classes=["fade-in"])
         
-        with gr.Tabs(elem_classes=["fade-in"]) as engine_tabs:
+        with gr.Tabs(selected="f5_tab", elem_classes=["fade-in"]) as engine_tabs:
             # ChatterboxTTS Tab
             with gr.TabItem("🎤 ChatterboxTTS", id="chatterbox_tab"):
                 if CHATTERBOX_AVAILABLE:
@@ -8272,7 +8023,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                         custom_voice_list = gr.Dataframe(visible=False, value=[])
             
             # Fish Speech Tab
-            with gr.TabItem("🐟 Fish Speech S1", id="fish_tab"):
+            with gr.TabItem("🐟 Fish Speech S1", id="fish_tab", visible=False):
                 if FISH_SPEECH_AVAILABLE:
                     with gr.Group() as fish_speech_controls:
                         gr.Markdown("**🐟 Fish Speech S1 - Natural text-to-speech synthesis**")
@@ -8350,7 +8101,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                     fish_seed = gr.Number(visible=False, value=None)
             
             # Fish Speech S2 Pro Tab
-            with gr.TabItem("🐟 S2 Pro", id="fish_s2_tab"):
+            with gr.TabItem("🐟 S2 Pro", id="fish_s2_tab", visible=False):
                 if FISH_S2_AVAILABLE:
                     with gr.Group() as fish_s2_controls:
                         gr.Markdown("**🐟 Fish Speech S2 Pro - 4B parameter flagship TTS with inline emotion control**")
@@ -8430,7 +8181,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                     fish_s2_seed = gr.Number(visible=False, value=None)
             
             # IndexTTS Tab
-            with gr.TabItem("🎯 IndexTTS", id="indextts_tab"):
+            with gr.TabItem("🎯 IndexTTS", id="indextts_tab", visible=False):
                 if INDEXTTS_AVAILABLE:
                     with gr.Group(visible=True, elem_id="indextts_controls", elem_classes=["fade-in"]):
                         gr.Markdown("**🎯 IndexTTS - Industrial-level controllable TTS**")
@@ -8470,7 +8221,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                         indextts_seed = gr.Number(visible=False, value=None)
             
             # IndexTTS2 Tab
-            with gr.TabItem("🎯 IndexTTS2", id="indextts2_tab"):
+            with gr.TabItem("🎯 IndexTTS2", id="indextts2_tab", visible=False):
                 if INDEXTTS2_AVAILABLE:
                     with gr.Group(visible=True, elem_id="indextts2_controls", elem_classes=["fade-in"]):
                         gr.Markdown("**🎯 IndexTTS2 - Advanced Emotionally Expressive TTS**")
@@ -8693,7 +8444,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                         f5_seed = gr.Number(visible=False, value=0)
             
             # Higgs Audio Tab
-            with gr.TabItem("🎙️ Higgs Audio", id="higgs_tab"):
+            with gr.TabItem("🎙️ Higgs Audio", id="higgs_tab", visible=False):
                 if HIGGS_AUDIO_AVAILABLE:
                     with gr.Group() as higgs_audio_controls:
                         gr.Markdown("**🎙️ Higgs Audio - Advanced Multimodal TTS**")
@@ -8797,7 +8548,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                         higgs_ras_win_max_num_repeat = gr.Slider(visible=False, value=2)
             
             # VoxCPM Tab
-            with gr.TabItem("🎤 VoxCPM", id="voxcpm_tab"):
+            with gr.TabItem("🎤 VoxCPM", id="voxcpm_tab", visible=False):
                 if VOXCPM_AVAILABLE:
                     with gr.Group() as voxcpm_controls:
                         gr.Markdown("**🎤 VoxCPM - Voice Cloning TTS**")
@@ -8893,7 +8644,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                         voxcpm_seed = gr.Number(visible=False, value=-1)
             
             # KittenTTS Tab
-            with gr.TabItem("🐱 KittenTTS", id="kitten_tab"):
+            with gr.TabItem("🐱 KittenTTS", id="kitten_tab", visible=False):
                 if KITTEN_TTS_AVAILABLE:
                     with gr.Group() as kitten_tts_controls:
                         gr.Markdown("**🐱 KittenTTS - Mini Model TTS**")

@@ -92,7 +92,12 @@ class F5TTSHandler:
         
         # Try to import F5-TTS
         self.f5_tts_available = self._check_f5_tts_available()
-        # Ensure Whisper dependency available for pipelines used by F5 (local snapshot, HF not ModelScope)
+        self.whisper_repo = 'openai/whisper-large-v3-turbo'
+        self.whisper_local = None
+
+    def _ensure_whisper_cached(self):
+        if self.whisper_local and os.path.isdir(self.whisper_local):
+            return
         try:
             from huggingface_hub import snapshot_download
             original_env = {
@@ -110,8 +115,6 @@ class F5TTSHandler:
                 os.environ['TRANSFORMERS_CACHE'] = str(self.cache_dir)
                 os.environ['HF_HUB_CACHE'] = str(self.cache_dir)
                 os.environ['HUGGINGFACE_HUB_CACHE'] = str(self.cache_dir)
-                # Pre-fetch the Whisper model to avoid ModelScope fallback
-                self.whisper_repo = 'openai/whisper-large-v3-turbo'
                 self.whisper_local = snapshot_download(
                     repo_id=self.whisper_repo,
                     cache_dir=str(self.cache_dir),
@@ -127,7 +130,6 @@ class F5TTSHandler:
                         os.environ[k] = v
         except Exception:
             self.whisper_local = None
-        # Install redirect patches so any request for the HF id uses the local snapshot path
         try:
             self._install_whisper_redirect_patch()
         except Exception:
@@ -404,6 +406,7 @@ class F5TTSHandler:
             return False, f"Model {model_name} not downloaded. Please download it first."
         
         try:
+            self._ensure_whisper_cached()
             if self.use_new_api:
                 # Use new API
                 print(f"Loading F5-TTS model using new API: {model_name}")
