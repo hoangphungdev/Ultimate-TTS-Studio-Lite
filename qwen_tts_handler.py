@@ -700,11 +700,11 @@ class QwenTTSHandler:
             
             all_wavs = []
             sr = 24000
-            for idx, chunk_text in enumerate(chunks):
+            for idx, piece in enumerate(chunks):
                 set_seed(seed + idx)
-                print(f"  [{idx+1}/{len(chunks)}] Generating ({len(chunk_text)} chars)...")
+                print(f"  [{idx+1}/{len(chunks)}] Generating ({len(piece)} chars)...")
                 wavs, sr = tts.generate_custom_voice(
-                    text=chunk_text,
+                    text=piece,
                     language=language,
                     speaker=speaker.lower().replace(" ", "_"),
                     instruct=instruct.strip() if instruct else None,
