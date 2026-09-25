@@ -283,11 +283,10 @@ class QwenTTSHandler:
             
             print(f"🔄 Loading Qwen3-TTS {model_type} {model_size} from {local_path}...")
             
-            dtype = torch.bfloat16 if (torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8) else torch.float16
             model = Qwen3TTSModel.from_pretrained(
                 str(local_path),
                 device_map=self.device,
-                torch_dtype=dtype,
+                torch_dtype=torch.bfloat16,
             )
             
             self.loaded_models[key] = model
