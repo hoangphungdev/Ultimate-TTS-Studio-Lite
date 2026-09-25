@@ -283,10 +283,11 @@ class QwenTTSHandler:
             
             print(f"🔄 Loading Qwen3-TTS {model_type} {model_size} from {local_path}...")
             
+            dtype = torch.bfloat16 if (torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8) else torch.float16
             model = Qwen3TTSModel.from_pretrained(
                 str(local_path),
                 device_map=self.device,
-                torch_dtype=torch.bfloat16,
+                torch_dtype=dtype,
             )
             
             self.loaded_models[key] = model
@@ -663,14 +664,13 @@ class QwenTTSHandler:
         speaker: str = "Ryan",
         language: str = "Auto",
         instruct: str = "",
-        model_size: str = "1.7B",
+        model_size: str = "0.6B",
         seed: int = -1,
         max_new_tokens: int = 2048
     ) -> Tuple[Optional[Tuple[int, np.ndarray]], str]:
         """
         Generate speech using CustomVoice model.
         Uses predefined speakers with optional style instructions.
-        Does NOT support chunking - for short texts only.
         """
         if not QWEN_TTS_AVAILABLE:
             return None, "❌ Qwen3-TTS not available"
@@ -714,6 +714,8 @@ class QwenTTSHandler:
                 all_wavs.append(wavs[0])
                 if idx < len(chunks) - 1:
                     all_wavs.append(np.zeros(int(sr * 0.25), dtype=np.float32))
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             
             final_wav = np.concatenate(all_wavs) if len(all_wavs) > 1 else all_wavs[0]
             total_duration = len(final_wav) / sr

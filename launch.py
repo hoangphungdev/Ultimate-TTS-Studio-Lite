@@ -6219,8 +6219,8 @@ def create_gradio_interface():
                         )
                         qwen_model_size = gr.Dropdown(
                             choices=["0.6B", "1.7B"],
-                            value="1.7B",
-                            label="📊 Model Size",
+                            value="0.6B",
+                            label="📊 Model Size (0.6B khuyên dùng cho card 4GB VRAM)",
                             elem_classes=["fade-in"]
                         )
                     
@@ -8740,9 +8740,9 @@ Alice: I went to Japan. It was absolutely incredible!""",
                             )
                             with gr.Row():
                                 qwen_clone_model_size = gr.Dropdown(
-                                    label="Model Size",
+                                    label="Model Size (0.6B nhanh & nhẹ VRAM)",
                                     choices=["0.6B", "1.7B"],
-                                    value="1.7B",
+                                    value="0.6B",
                                     elem_classes=["fade-in"]
                                 )
                                 qwen_chunk_size = gr.Slider(
@@ -8765,7 +8765,7 @@ Alice: I went to Japan. It was absolutely incredible!""",
                         # Custom Voice controls (visible when custom_voice mode selected)
                         with gr.Group(visible=False) as qwen_custom_voice_group:
                             gr.Markdown("**🗣️ Custom Voice Mode** - Use predefined speakers with style instructions")
-                            gr.Markdown("*⚠️ Only works in Text to Speech mode (no chunking)*")
+                            gr.Markdown("*✅ Đã hỗ trợ tự động chia câu dài (Chunking) — Khuyên chọn `0.6B` cho GTX 1050 4GB*")
                             qwen_speaker = gr.Radio(
                                 label="👤 Speaker",
                                 choices=QWEN_SPEAKERS if QWEN_TTS_AVAILABLE else ["Ryan"],
@@ -8774,9 +8774,9 @@ Alice: I went to Japan. It was absolutely incredible!""",
                             )
                             with gr.Row():
                                 qwen_custom_model_size = gr.Dropdown(
-                                    label="Model Size",
+                                    label="Model Size (0.6B khuyên dùng cho 4GB VRAM)",
                                     choices=["0.6B", "1.7B"],
-                                    value="1.7B",
+                                    value="0.6B",
                                     elem_classes=["fade-in"]
                                 )
                             qwen_style_instruct = gr.Textbox(
