@@ -283,10 +283,14 @@ class QwenTTSHandler:
             
             print(f"🔄 Loading Qwen3-TTS {model_type} {model_size} from {local_path}...")
             
+            # On Pascal/Maxwell GPUs (< SM 8.0 like GTX 1050), bfloat16 is emulated in software (2x slower than float32)
+            # and float16 overflows Qwen3 logits (>65504). Native float32 on 0.6B is 2x faster and never overflows.
+            use_fp32 = (model_size == "0.6B") and torch.cuda.is_available() and (torch.cuda.get_device_capability()[0] < 8)
+            dtype = torch.float32 if use_fp32 else torch.bfloat16
             model = Qwen3TTSModel.from_pretrained(
                 str(local_path),
                 device_map=self.device,
-                torch_dtype=torch.bfloat16,
+                torch_dtype=dtype,
             )
             
             self.loaded_models[key] = model
@@ -694,25 +698,27 @@ class QwenTTSHandler:
             print(f"{'='*50}")
             print(f"🎲 Seed: {seed}")
             print(f"👤 Speaker: {speaker}")
-            chunks = chunk_text(text.strip(), max_chars=250)
-            print(f"📝 Text length: {len(text)} chars -> {len(chunks)} chunk(s)")
+            chunks = chunk_text(text.strip(), max_chars=260)
+            batch_size = 4
+            print(f"📝 Text length: {len(text)} chars -> {len(chunks)} chunk(s) (batch_size={batch_size})")
             
             all_wavs = []
             sr = 24000
-            for idx, piece in enumerate(chunks):
-                set_seed(seed + idx)
-                print(f"  [{idx+1}/{len(chunks)}] Generating ({len(piece)} chars)...")
+            for i in range(0, len(chunks), batch_size):
+                batch_pieces = chunks[i : i + batch_size]
+                set_seed(seed + i)
+                print(f"  [Batch {i//batch_size + 1}/{(len(chunks) + batch_size - 1)//batch_size}] Generating {len(batch_pieces)} chunk(s) in parallel...")
                 wavs, sr = tts.generate_custom_voice(
-                    text=piece,
+                    text=batch_pieces,
                     language=language,
                     speaker=speaker.lower().replace(" ", "_"),
                     instruct=instruct.strip() if instruct else None,
                     non_streaming_mode=True,
                     max_new_tokens=max_new_tokens,
                 )
-                all_wavs.append(wavs[0])
-                if idx < len(chunks) - 1:
-                    all_wavs.append(np.zeros(int(sr * 0.25), dtype=np.float32))
+                for w in wavs:
+                    all_wavs.append(w)
+                    all_wavs.append(np.zeros(int(sr * 0.2), dtype=np.float32))
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
             
