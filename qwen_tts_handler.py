@@ -695,24 +695,34 @@ class QwenTTSHandler:
             print(f"{'='*50}")
             print(f"🎲 Seed: {seed}")
             print(f"👤 Speaker: {speaker}")
-            print(f"📝 Text length: {len(text)} chars")
+            chunks = split_text_into_chunks(text.strip(), max_chars=250)
+            print(f"📝 Text length: {len(text)} chars -> {len(chunks)} chunk(s)")
             
-            wavs, sr = tts.generate_custom_voice(
-                text=text.strip(),
-                language=language,
-                speaker=speaker.lower().replace(" ", "_"),
-                instruct=instruct.strip() if instruct else None,
-                non_streaming_mode=True,
-                max_new_tokens=max_new_tokens,
-            )
+            all_wavs = []
+            sr = 24000
+            for idx, chunk_text in enumerate(chunks):
+                set_seed(seed + idx)
+                print(f"  [{idx+1}/{len(chunks)}] Generating ({len(chunk_text)} chars)...")
+                wavs, sr = tts.generate_custom_voice(
+                    text=chunk_text,
+                    language=language,
+                    speaker=speaker.lower().replace(" ", "_"),
+                    instruct=instruct.strip() if instruct else None,
+                    non_streaming_mode=True,
+                    max_new_tokens=max_new_tokens,
+                )
+                all_wavs.append(wavs[0])
+                if idx < len(chunks) - 1:
+                    all_wavs.append(np.zeros(int(sr * 0.25), dtype=np.float32))
             
-            total_duration = len(wavs[0]) / sr
+            final_wav = np.concatenate(all_wavs) if len(all_wavs) > 1 else all_wavs[0]
+            total_duration = len(final_wav) / sr
             print(f"\n{'='*50}")
-            print(f"✅ Complete! Duration: {total_duration:.2f}s")
+            print(f"✅ Complete! Duration: {total_duration:.2f}s ({len(chunks)} chunks)")
             print(f"{'='*50}\n")
             
-            status = f"Generated {total_duration:.1f}s of audio | Seed: {seed}"
-            return (sr, wavs[0]), status
+            status = f"Generated {len(chunks)} chunk(s), {total_duration:.1f}s total | Seed: {seed}"
+            return (sr, final_wav), status
             
         except Exception as e:
             print(f"❌ Error: {type(e).__name__}: {e}")
