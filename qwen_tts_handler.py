@@ -695,7 +695,7 @@ class QwenTTSHandler:
             print(f"{'='*50}")
             print(f"🎲 Seed: {seed}")
             print(f"👤 Speaker: {speaker}")
-            chunks = split_text_into_chunks(text.strip(), max_chars=250)
+            chunks = chunk_text(text.strip(), max_chars=250)
             print(f"📝 Text length: {len(text)} chars -> {len(chunks)} chunk(s)")
             
             all_wavs = []
