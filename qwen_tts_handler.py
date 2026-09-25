@@ -195,17 +195,21 @@ class QwenTTSHandler:
         return self.checkpoints_dir / folder_name
     
     def check_model_downloaded(self, model_type: str, model_size: str) -> bool:
-        """Check if a model is already downloaded in the checkpoints folder."""
+        """Check if a model is completely downloaded (including weights) in the checkpoints folder."""
         local_path = self._get_model_local_path(model_type, model_size)
-        
-        # Check if the local directory exists and has model files
-        if local_path.exists():
-            # Look for key model files that indicate a complete download
-            config_file = local_path / "config.json"
-            if config_file.exists():
-                return True
-        
-        return False
+        if not (local_path / "config.json").exists():
+            return False
+        has_weights = (
+            (local_path / "model.safetensors").exists()
+            or (local_path / "pytorch_model.bin").exists()
+            or (local_path / "model.safetensors.index.json").exists()
+        )
+        has_tokenizer_weights = (
+            not (local_path / "speech_tokenizer").exists()
+            or (local_path / "speech_tokenizer" / "model.safetensors").exists()
+            or (local_path / "speech_tokenizer" / "pytorch_model.bin").exists()
+        )
+        return has_weights and has_tokenizer_weights
     
     def get_downloaded_models_status(self) -> str:
         """Get status of all available models."""
